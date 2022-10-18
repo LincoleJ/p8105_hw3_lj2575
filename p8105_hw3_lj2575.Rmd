@@ -10,8 +10,8 @@ library(tidyverse)
 library(ggridges)
 library(patchwork)
 library(readr)
-# install.packages("devtools")
-# devtools::install_github("p8105/p8105.datasets")
+#install.packages("devtools")
+#devtools::install_github("p8105/p8105.datasets")
 library(p8105.datasets)
 
 knitr::opts_chunk$set(
@@ -254,11 +254,10 @@ tmax_vs_tmin <-
 
 snowf <- 
   ny_noaa %>% 
-  snow = as.numeric(snow) %>%
   filter(snow > 0 & snow < 100) %>%
-  group_by(year) %>%
-  ggplot(aes(x = year, y = snow)) +
-  geom_point()
+  mutate(year = as.factor(year)) %>%
+  ggplot(aes(x = snow, y = year)) +
+  geom_density_ridges(scale = .85)
 
-tmax_vs_min + snowf
+tmax_vs_tmin + snowf
 ```
