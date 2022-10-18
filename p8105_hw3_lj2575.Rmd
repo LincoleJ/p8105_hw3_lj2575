@@ -11,7 +11,7 @@ library(ggridges)
 library(patchwork)
 library(readr)
 # install.packages("devtools")
-devtools::install_github("p8105/p8105.datasets")
+# devtools::install_github("p8105/p8105.datasets")
 library(p8105.datasets)
 
 knitr::opts_chunk$set(
@@ -250,6 +250,7 @@ tmax_vs_tmin <-
   select(tmin, tmax) %>%
   drop_na() %>%
   ggplot(aes(x = tmin, y = tmax)) +
+  geom_hex()
 
 snowf <- 
   ny_noaa %>% 
