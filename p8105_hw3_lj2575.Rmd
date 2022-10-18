@@ -1,16 +1,17 @@
 ---
-title: "Homework 3 solutions"
-author: "Lincole/Lingke Jiang"
-date: '`r format(Sys.time(), "%Y-%m-%d")`'
+title: "Homework 3"
+author: "Lincole Jiang"
+date: 'October 15th, 2022'
 output: github_document
-
 ---
 
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(ggridges)
 library(patchwork)
-
+library(readr)
+# install.packages("devtools")
+devtools::install_github("p8105/p8105.datasets")
 library(p8105.datasets)
 
 knitr::opts_chunk$set(
@@ -49,9 +50,7 @@ Due: October 15 at 11:59pm.
 
 ### Problem 0
 
-This solution focuses on a reproducible report containing code and text necessary for Problems 1-3, and is organized as an R Project. This was not prepared as a GitHub repo; examples for repository structure and git commits should be familiar from other elements of the course.
-
-Throughout, we use appropriate text to describe our code and results, and use clear styling to ensure code is readable. 
+This “problem” focuses on the structure of submission, especially the use git and GitHub for reproducibility, R Projects to organize work, R Markdown to write reproducible reports, relative paths to load data from local files, and reasonable naming structures for files.
 
 ### Problem 1
 
@@ -117,4 +116,62 @@ instacart %>%
 
 
 ### Problem 2
+
+For this problem, we look at the accelerometer data collected on a 63 year-old male with BMI 25. Firstly, we import and wrangle the data. More specifically, we create a new factor variable wkdy_vs_wknd to indicate whether the data is from a weekday or a weekend; use pivot_longer to create variables minute and activity that indicates the minute at which the activity is recorded and the activity count during that particular minute interval, respectively, and makes sure each variable is of the most reasonable variable class.
+
+```{r}
+accel_df <- read_csv("./data/accel_data.csv") %>%
+  janitor::clean_names() %>%
+  pivot_longer(cols = starts_with("activity"),
+               names_to = "minute",
+               names_prefix = "activity.",
+               values_to = "activity") %>%
+  mutate(wkdy_vs_wknd = ifelse(day == "Saturday" | day == "Sunday", "weekend", "weekday"),
+         minute = as.integer(minute),
+         wkdy_vs_wknd = as.factor(wkdy_vs_wknd)) 
+```
+
+Now, we provide a description for data set accel. This data is collected on a 63 year-old male with BMI 25 over the span of 5 weeks, who was admitted to the Cardiac Care Center of CUMC and diagnosed with congestive heart failure. More specifically, there are `r ncol(accel_df)` variables and `r nrow(accel_df)` observations; and below provides a description for each variable. 
+
+Variable *week* indicates the week for which the observation is made since the beginning of the study. It is a `r class(accel_df$week)` variable. It takes values from `r min(accel_df$week)` to `r max(accel_df$week)`.
+
+Variable *day_id* indicates the day for which the observation is made since the beginning of the study. It is a `r class(accel_df$day_id)` variable and takes values from `r min(accel_df$day_id)` to `r max(accel_df$day_id)`.
+
+Variable *day* indicates the day of the week for which the observation is made. It is a `r class(accel_df$day)` variable.
+
+Variable *minute* indicates the minute for which the observation is made. It is a `r class(accel_df$minute)` variable.
+
+Variable *activity* indicates activity counts measured in the duration of the one-minute interval of the particular observation. It is a `r class(accel_df$activity)` variable and its range is from `r min(accel_df$activity)` to `r max(accel_df$activity)`.
+
+Variable *wkdy_vs_wknd* indicates whether the observation was recorded on a weekday or on a weekend. It is a `r class(accel_df$wkdy_vs_wknd)` variable.
+
+Now, we turn our attention to the total activity over the day. To do this, we aggregate across minutes to create a total activity variable for each day and create a table showing the totals.
+
+```{r}
+accel_activity <- accel_df %>% 
+  group_by(day_id) %>%
+  summarize(total_activity = sum(activity))
+
+accel_activity %>% knitr::kable("simple")# to show the table
+```
+
+We use a ggplot to display the pattern.
+
+```{r}
+accel_activity %>%
+  ggplot(aes(x = day_id, y = total_activity)) +
+  geom_point()
+```
+
+As shown, the distribution of total activity via day is random with no particular pattern.
+
+Finally, we make a single-panel plot showing the 24-hour activity time courses for each day and use color to indicate day of the week.
+
+```{r}
+accel_df %>% 
+  ggplot(aes(x = minute, y = activity)) +
+  geom_point(aes(color = day))
+```
+
+To describe the graph, it seems like the activity before ~300 minute has no ostensibly high counts, whereas exceeding this minute, there seems to be a general increase in activity count as well as very high counts. The plot can be said to be skewed to the left. There doesn't seem to be much variance in activity via day of the week, on the other hand.
 
