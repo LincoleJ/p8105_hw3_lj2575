@@ -250,7 +250,14 @@ tmax_vs_tmin <-
   select(tmin, tmax) %>%
   drop_na() %>%
   ggplot(aes(x = tmin, y = tmax)) +
+
+snowf <- 
+  ny_noaa %>% 
+  snow = as.numeric(snow) %>%
+  filter(snow > 0 & snow < 100) %>%
+  group_by(year) %>%
+  ggplot(aes(x = year, y = snow)) +
   geom_point()
 
-snow_data <- 
+tmax_vs_min + snowf
 ```
