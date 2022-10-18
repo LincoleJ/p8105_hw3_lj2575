@@ -145,25 +145,29 @@ Variable *activity* indicates activity counts measured in the duration of the on
 
 Variable *wkdy_vs_wknd* indicates whether the observation was recorded on a weekday or on a weekend. It is a `r class(accel_df$wkdy_vs_wknd)` variable.
 
-Now, we turn our attention to the total activity over the day. To do this, we aggregate across minutes to create a total activity variable for each day and create a table showing the totals.
+Now, we turn our attention to the total activity over the day and by week. To do this, we aggregate across minutes to create a total activity variable for each day and create a table showing the totals.
 
 ```{r}
-accel_activity <- accel_df %>% 
-  group_by(day_id) %>%
-  summarize(total_activity = sum(activity))
+accel_act <- accel_df %>% 
+  group_by(day, week) %>%
+  summarize(total_activity = sum(activity)) 
 
-accel_activity %>% knitr::kable("simple")# to show the table
+accel_act %>% 
+  pivot_wider(
+    names_from = day, 
+    values_from = total_activity) %>%
+  knitr::kable() # to show the table
 ```
 
-We use a ggplot to display the pattern.
+To explore the trends associated with this data set, we create a ggplot where x-axis is week, y-axis is activity, and the color indicates day.
 
 ```{r}
-accel_activity %>%
-  ggplot(aes(x = day_id, y = total_activity)) +
-  geom_point()
+accel_act %>% 
+  ggplot(aes(x = week, y = total_activity, color = day)) +
+  geom_smooth()
 ```
 
-As shown, the distribution of total activity via day is random with no particular pattern.
+As such, we could perhaps conclude that week 4 has the lowest activity, and Monday and Friday are where activity is the most variable in all weeks.
 
 Finally, we make a single-panel plot showing the 24-hour activity time courses for each day and use color to indicate day of the week.
 
@@ -173,5 +177,80 @@ accel_df %>%
   geom_point(aes(color = day))
 ```
 
-To describe the graph, it seems like the activity before ~300 minute has no ostensibly high counts, whereas exceeding this minute, there seems to be a general increase in activity count as well as very high counts. The plot can be said to be skewed to the left. There doesn't seem to be much variance in activity via day of the week, on the other hand.
+To describe the graph, it seems like the activity before ~300 minute has no ostensibly high counts, whereas exceeding ~300 minute there seems to be a general increase in activity count as well as very high counts compared to the former part. The plot can be said to be skewed to the left. There doesn't seem to be much variance in activity via day of the week, on the other hand.
 
+
+### Problem 3
+
+For this problem, we explore "NY NOAA" data. We first load the data.
+
+```{r}
+library(p8105.datasets)
+data("ny_noaa")
+```
+
+First, we provide a brief description of the data. Firstly, data has `r ncol(ny_noaa)` variables and `r nrow(ny_noaa)` observations. Specifically, *id* is a `r class(ny_noaa$id)` variable that describes Weather station ID; *date* is a `r class(ny_noaa$date)` variable that describes the date of the observation; *prcp* is a `r class(ny_noaa$id)` variable that describes the precipitation in tenths of mm; *snow* is a `r class(ny_noaa$snow)` variable indicating snowfall in mm; *snwd* is a `r class(ny_noaa$snwd)` variable indicating snow depth in mm; and *tmax* and *tmin* are `r class(ny_noaa$tmax)` variables indicating the maximum and minimum temperature in tenths of degrees C, respectively. On the other hand, missing value is a problem for this data set. Of the `r nrow(ny_noaa)` recorded by this data set, the number of missing values for id and date are both `r sum(is.na(ny_noaa$date))`, for prcp is `r sum(is.na(ny_noaa$prcp))`, for snow is `r sum(is.na(ny_noaa$snow))`, for snwd is `r sum(is.na(ny_noaa$snwd))`, for tmax is `r sum(is.na(ny_noaa$tmax))`, and for tmin is `r sum(is.na(ny_noaa$tmin))`.
+
+Now, we attempt to clean the data set. In this step, we create separate variables for year, month, and day; modify units for temperature, precipitation, and snowfall such that they are reasonable.
+
+```{r}
+ny_noaa <- ny_noaa %>% 
+  mutate(date = as.character(date),
+         tmax = as.numeric(tmax),
+         tmin = as.numeric(tmin)) %>%
+  separate(date, into = c("year", "month", "day"), sep = "-") %>%
+  mutate(
+    year = as.integer(year),
+    month = as.integer(month),
+    day = as.integer(day),
+    tmax = tmax * 0.1,
+    tmin = tmin * 0.1,
+    prcp = prcp * 0.1)
+```
+
+In this way, the unit for tmax and tmin are in degree C, and the units for prcp, snow, and snwd are all in mm. We now try to show the most commonly observed value for snowfall by writing a find_mode function as shown below.
+
+```{r}
+find_mode <- function(x) {
+  u <- unique(x)
+  tab <- tabulate(match(x, u))
+  u[tab == max(tab)]
+}
+```
+
+In this way, we know that the most commonly observed value for snowfall is `r find_mode(ny_noaa$snow)`. Next, we make a two-panel plot showing the average max temperature in January and in July in each station across years. 
+
+```{r}
+tmax_jan <- 
+  ny_noaa %>%
+  filter(month == 1) %>% 
+  group_by(year) %>% 
+  summarize(tmax_mean = mean(tmax, na.rm=TRUE)) %>%
+  ggplot(aes(x = year, y = tmax_mean)) +
+  geom_point()
+
+tmax_jul <- 
+  ny_noaa %>%
+  filter(month == 7) %>% 
+  group_by(year) %>% 
+  summarize(tmax_mean = mean(tmax, na.rm=TRUE)) %>%
+  ggplot(aes(x = year, y = tmax_mean)) +
+  geom_point()
+
+tmax_jan + tmax_jul
+```
+
+It seems like the average max temperature in a year follows very roughly linearly for both January and July, but there due to the scattered nature of both of these structures, it is difficult to conclude whether the outstanding observations are outliers or if the distribution is in fact random.
+
+Finally, we make a two-panel plot showing 1) tmax vs. tmin for the full data set and 2) the distribution of snowfall values greater than 0 and less than 100 separately by year.
+
+```{r}
+tmax_vs_tmin <- 
+  ny_noaa %>%
+  select(tmin, tmax) %>%
+  drop_na() %>%
+  ggplot(aes(x = tmin, y = tmax)) +
+  geom_point()
+
+snow_data <- 
+```
